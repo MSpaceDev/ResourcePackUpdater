@@ -1,2 +1,5 @@
 *.exe
 *.zip
+build/
+__pycache__/
+*.spec
