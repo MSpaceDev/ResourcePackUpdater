@@ -1,6 +1,7 @@
 import glob
 import os
 from json import load, dumps
+import ctypes
 
 changes = \
 	{
@@ -591,3 +592,5 @@ for i in range(len(blockstates)):
 	file = file.replace(".json", "")
 	if file in changes_keys:
 		os.rename(blockstates[i], path + "/" + changes[file] + ".json")
+
+ctypes.windll.user32.MessageBoxW(0, u"Resource Pack updated to 1.13 successfully!", u"Conversion Complete", 0)
