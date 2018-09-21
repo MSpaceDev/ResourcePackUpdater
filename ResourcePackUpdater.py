@@ -593,4 +593,22 @@ for i in range(len(blockstates)):
 	if file in changes_keys:
 		os.rename(blockstates[i], path + "/" + changes[file] + ".json")
 
+#
+# Deals with pack.mcmeta
+#
+
+pack_metas = glob.glob('**/pack.mcmeta', recursive=True)
+json_edited = []
+for pack in pack_metas:
+	with open(pack, "r+") as f:
+		json_edited.append(load(f))
+
+for json in json_edited:
+	pack = [v for k,v in json.items() if k == "pack"][0]
+	pack["pack_format"] = 4
+
+for i in range(len(pack_metas)):
+	with open(pack_metas[i], "w+") as f:
+		f.write(dumps(json_edited[i], indent=4))
+
 ctypes.windll.user32.MessageBoxW(0, u"Resource Pack updated to 1.13 successfully!", u"Conversion Complete", 0)
