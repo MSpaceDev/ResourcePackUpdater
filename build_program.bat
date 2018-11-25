@@ -1,0 +1,1 @@
+pyinstaller --onefile --noconsole --add-data resources/particles_base.png;./resources .\ResourcePackUpdater.py -i .\pack_updater.ico -n "Resource Pack Updater"
