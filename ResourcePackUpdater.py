@@ -103,9 +103,7 @@ changes = \
         "endframe_side": "end_portal_frame_side",
         "endframe_top": "end_portal_frame_top",
         "end_bricks": "end_stone_bricks",
-        "farmland_dry": "farmland",
         "furnace_front_off": "furnace_front",
-        "tallgrass": "grass",
         "grass_side": "grass_block_side",
         "grass_side_overlay": "grass_block_side_overlay",
         "grass_side_snowed": "grass_block_snow",
@@ -257,6 +255,8 @@ changes = \
         "double_plant_sunflower_front": "sunflower_front",
         "double_plant_grass_bottom": "tall_grass_bottom",
         "double_plant_grass_top": "tall_grass_top",
+        "double_grass_bottom": "tall_grass_bottom",
+        "double_grass_top": "tall_grass_top",
         "torch_on": "torch",
         "trip_wire_source": "tripwire_hook",
         "sponge_wet": "wet_sponge",
@@ -478,7 +478,12 @@ changes = \
         "normal_rail_raised_ne": "rail_raised_ne",
         "normal_rail_raised_sw": "rail_raised_sw",
         "half_slab": "slab",
-        "upper_slab": "slab_top"
+        "upper_slab": "slab_top",
+        "anvil_slightly_damaged": "chipped_anvil",
+        "anvil_very_damaged": "damaged_anvil",
+        "anvil_intact": "anvil",
+        "anvil_undamaged": "anvil",
+        "farmland_dry": "farmland"
     }
 
 changesBlockstates = \
@@ -487,6 +492,165 @@ changesBlockstates = \
         "half=top": "type=top",
         "normal": ""
     }
+
+#
+# Special case functions
+#
+
+
+# Grass
+def convert_grass(file_list):
+    if "grass_block" not in file_list:
+        grass = glob.glob("**/assets/**/models/block/grass.json", recursive=True)
+        grass_normal = glob.glob("**/assets/**/models/block/grass_normal.json", recursive=True)
+
+        for i in range(len(grass)):
+            # Put all JSON into separated list
+            with open(grass[i], "r") as f:
+                grass_json = load(f)
+
+            try:
+                with open(grass_normal[i], "r") as f:
+                    grass_normal_json = load(f)
+            except:
+                continue
+
+            # Merge 2 JSON files
+            parent = [v for k, v in grass_json.items() if k == "parent"][0]
+            elements = [v for k, v in grass_json.items() if k == "elements"][0]
+            textures = [v for k, v in grass_normal_json.items() if k == "textures"][0]
+            grass_block_json = {"parent": parent, "textures": textures, "elements": elements}
+
+            with open(os.path.dirname(grass[i]) + "\\grass_block.json", "w+") as f:
+                f.write(dumps(grass_block_json, indent=4))
+                try:
+                    os.remove(grass[i])
+                    os.remove(grass_normal[i])
+                except:
+                    continue
+
+    if "tall_grass" in file_list:
+        tall_grass = glob.glob("**/assets/**/models/block/tall_grass.json", recursive=True)
+
+        for model in tall_grass:
+
+            with open(model, "r") as f:
+                tall_grass_json = load(f)
+
+            textures = [v for k, v in tall_grass_json.items() if k == "textures"][0]
+            textures["cross"] = "block/grass"
+            tall_grass_json["textures"] = textures
+
+            with open(model, "w+") as f:
+                f.write(dumps(tall_grass_json, indent=4))
+
+            try:
+                os.rename(model, os.path.dirname(model) + "\\grass.json")
+            except FileExistsError:
+                continue
+
+
+# Anvil
+def convert_anvil(file_list):
+    if "anvil_undamaged" in file_list:
+        # For merging
+        anvil = glob.glob("**/assets/**/models/block/anvil.json", recursive=True)
+        anvil_undamaged = glob.glob("**/assets/**/models/block/anvil_undamaged.json", recursive=True)
+
+        for i in range(len(anvil_undamaged)):
+            with open(anvil_undamaged[i], "r") as f:
+                anvil_undamaged_json = load(f)
+
+            try:
+                with open(anvil[i], "r") as f:
+                    anvil_json = load(f)
+            except:
+                continue
+
+            parent = [v for k, v in anvil_json.items() if k == "parent"][0]
+            display = [v for k, v in anvil_json.items() if k == "display"][0]
+            elements = [v for k, v in anvil_json.items() if k == "elements"][0]
+            textures = [v for k, v in anvil_undamaged_json.items() if k == "textures"][0]
+
+            new_anvil_json = {"parent": parent, "textures": textures, "elements": elements, "display": display}
+
+            with open(anvil[i], "w+") as f:
+                f.write(dumps(new_anvil_json, indent=4))
+
+            try:
+                os.remove(anvil_undamaged[i])
+            except:
+                continue
+
+
+# Farmland
+def convert_farmland(file_list):
+    if "template_farmland" not in file_list:
+        farmland_block = glob.glob("**/assets/**/models/block/farmland.json", recursive=True)
+        farmland_dry_block = glob.glob("**/assets/**/models/block/farmland_dry.json", recursive=True)
+
+        # Rename parent ONLY
+        farmland_item = glob.glob("**/assets/**/models/item/farmland.json", recursive=True)
+        farmland_moist = glob.glob("**/assets/**/models/block/farmland_moist.json", recursive=True)
+
+        for model in farmland_item:
+            with open(model, "r") as f:
+                model_json = load(f)
+
+            model_json["parent"] = "block/farmland"
+
+            with open(model, "w+") as f:
+                f.write(dumps(model_json, indent=4))
+
+        for model in farmland_moist:
+            with open(model, "r") as f:
+                model_json = load(f)
+
+            model_json["parent"] = "block/template_farmland"
+
+            with open(model, "w+") as f:
+                f.write(dumps(model_json, indent=4))
+
+        for i in range(len(farmland_block)):
+            with open(farmland_block[i], "r") as f:
+                farmland_block_json = load(f)
+
+            try:
+                with open(farmland_dry_block[i], "r") as f:
+                    farmland_dry_block_json = load(f)
+            except:
+                continue
+
+            try:
+                os.rename(farmland_block[i], os.path.dirname(farmland_block[i]) + "\\template_farmland.json")
+            except FileExistsError:
+                continue
+
+            farmland_dry_block_json["parent"] = "block/template_farmland"
+
+            with open(farmland_dry_block[i], "w+") as f:
+                f.write(dumps(farmland_dry_block_json, indent=4))
+
+            try:
+                os.rename(farmland_dry_block[i], os.path.dirname(farmland_dry_block[i]) + "\\farmland.json")
+            except FileExistsError:
+                continue
+
+
+
+#
+# Utility Functions
+#
+
+
+def get_file_list(models):
+    file_list = []
+    for dir in models:
+        file_name = os.path.basename(dir)
+        file_name = file_name.replace(".json", "")
+        file_list.append(file_name)
+
+    return file_list
 
 
 # Takes in array and creates directory in order given
@@ -498,6 +662,7 @@ def create_dirs(dirs):
             continue
 
 
+# Gets the path of the temp pyinstaller resources path
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
@@ -511,7 +676,17 @@ def resource_path(relative_path):
 # Deals with all model files
 #
 
+
 # Store paths to JSON files in list
+models = glob.glob('**/assets/**/models/**/*.json', recursive=True)
+
+file_list = get_file_list(models)
+
+convert_grass(file_list)
+convert_anvil(file_list)
+convert_farmland(file_list)
+
+# Reinstantiate model list to remove files that were edited and may not exist
 models = glob.glob('**/assets/**/models/**/*.json', recursive=True)
 
 # Put all JSON into separated list
@@ -526,7 +701,12 @@ changes_keys = changes.keys()
 for model in json:
     textures = [v for k,v in model.items() if k == "textures"]
 
-    parent = [v for k,v in model.items() if k == "parent"][0]
+    parent = ""
+    try:
+        parent = [v for k,v in model.items() if k == "parent"][0]
+    except:
+        print(parent)
+
     if parent:
         if str(parent).find("/") != -1:
             path, block = str(parent).split("/", 1)
@@ -537,6 +717,7 @@ for model in json:
 
         if block in changes_keys:
             parent = path + changes[block]
+        model["parent"] = parent
 
     if textures:
         textures = textures[0]
@@ -555,7 +736,6 @@ for model in json:
             if block in changes_keys:
                 textures[tex] = path + changes[block]
         model["textures"] = textures
-        model["parent"] = parent
     json_edited.append(model)
 
 # Output Edited JSON to files and rename them
@@ -567,8 +747,12 @@ for i in range(len(models)):
     # Rename file after if applicable
     path, file = os.path.split(models[i])
     file = file.replace(".json", "")
+
     if file in changes_keys:
-        os.rename(models[i], path + "/" + changes[file] + ".json")
+        try:
+            os.rename(models[i], path + "/" + changes[file] + ".json")
+        except FileExistsError:
+            continue
 
 #
 # deals with all PNGs and MCMetas
@@ -580,11 +764,17 @@ items_dir = glob.glob('**/assets/**/textures/items', recursive=True)
 
 for d in blocks_dir:
     path = os.path.split(d)[0]
-    os.rename(d, path + "/" + "block")
+    try:
+        os.rename(d, path + "/" + "block")
+    except FileExistsError:
+        continue
 
 for d in items_dir:
     path = os.path.split(d)[0]
-    os.rename(d, path + "/" + "item")
+    try:
+        os.rename(d, path + "/" + "item")
+    except FileExistsError:
+        continue
 
 # Renames all PNG files
 pngs = glob.glob('**/assets/**/textures/**/*.png', recursive=True)
@@ -594,7 +784,10 @@ for d in pngs:
     path, file = os.path.split(d)
     file = file.replace(".png", "")
     if file in changes_keys:
-        os.rename(d, path + "/" + changes[file] + ".png")
+        try:
+            os.rename(d, path + "/" + changes[file] + ".png")
+        except FileExistsError:
+            continue
 
 # Renames all png.mcmeta files
 mcmeta = glob.glob('**/assets/**/textures/**/*.png.mcmeta', recursive=True)
@@ -604,7 +797,10 @@ for d in mcmeta:
     path, file = os.path.split(d)
     file = file.replace(".png.mcmeta", "")
     if file in changes_keys:
-        os.rename(d, path + "/" + changes[file] + ".png.mcmeta")
+        try:
+            os.rename(d, path + "/" + changes[file] + ".png.mcmeta")
+        except FileExistsError:
+            continue
 
 #
 # Deals with all blockstate files
@@ -663,7 +859,10 @@ for i in range(len(blockstates)):
     path, file = os.path.split(blockstates[i])
     file = file.replace(".json", "")
     if file in changes_keys:
-        os.rename(blockstates[i], path + "/" + changes[file] + ".json")
+        try:
+            os.rename(blockstates[i], path + "/" + changes[file] + ".json")
+        except FileExistsError:
+            continue
 
 #
 # Deals with pack.mcmeta
@@ -697,22 +896,27 @@ for particle_path in particles:
     old_particle_path = os.path.dirname(particle_path) + "\\particlesTEMP.png"
     new_particle_path = os.path.dirname(particle_path) + "\\particles.png"
 
-    image_check = Image.open(particle_path)
-    width = Image.Image.size.getter(image_check)
-    Image.Image.close(image_check)
+    try:
+        image_check = Image.open(particle_path)
+        width = Image.Image.size.getter(image_check)
+        Image.Image.close(image_check)
+    except FileNotFoundError:
+        continue
 
     if width != 256:
-        os.rename(particle_path, old_particle_path)
+        try:
+            os.rename(particle_path, old_particle_path)
+            Image.Image.save(base_particle, new_particle_path, 'PNG')
 
-        Image.Image.save(base_particle, new_particle_path, 'PNG')
+            foreground = Image.open(old_particle_path)
+            background = Image.open(new_particle_path)
 
-        foreground = Image.open(old_particle_path)
-        background = Image.open(new_particle_path)
+            Image.Image.paste(background, foreground, (0, 0), foreground)
+            Image.Image.save(background, new_particle_path)
 
-        Image.Image.paste(background, foreground, (0, 0), foreground)
-        Image.Image.save(background, new_particle_path)
-
-        os.remove(old_particle_path)
+            os.remove(old_particle_path)
+        except:
+            continue
 
 
 ctypes.windll.user32.MessageBoxW(0, u"Resource Pack updated to 1.13 successfully!", u"Conversion Complete", 0)
